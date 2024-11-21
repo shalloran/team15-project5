@@ -7,7 +7,7 @@
 1. Clone the repository or unzip the files.
 2. Build the docker images: ```docker compose build```
 3. Run the docker compose file: ```docker compose up -d```
-4. Run the setup script:
+4. Ensure that the setup script is executable and then run the setup script:
    ```bash
    chmod +x setup.sh && ./setup.sh
    ```
@@ -15,3 +15,6 @@
     ```bash
     docker exec client-container curl --cert /shared/client.crt --key /shared/client.key -k https://server-container
     ```
+
+## Contributing:
+Please feel free to suggest improvements by submitting a pull request!
