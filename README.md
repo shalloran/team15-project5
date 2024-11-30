@@ -1,20 +1,39 @@
-# Team 15 Project 5: PKI-TLS Automation
+# TLS/PKI Testing
 
-## Prerequisites
-- Docker Desktop and Docker Compose installed. This works on MacOS, it should work on Linux but you may need to modify the setup script and your commands.
+This repository contains a Github Actions workflow for Project 5. It uses Docker containers and steps through TLS and mTLS testing.
 
-## Setup Instructions
-1. Clone the repository or unzip the files.
-2. Build the docker images: ```docker compose build```
-3. Run the docker compose file: ```docker compose up -d```
-4. Ensure that the setup script is executable and then run the setup script:
-   ```bash
-   chmod +x setup.sh && ./setup.sh
-   ```
-5. Test the setup:
-    ```bash
-    docker exec client-container curl --cert /shared/client.crt --key /shared/client.key -k https://server-container
-    ```
+## GitHub Actions Workflow
+- prepare containers
+- setup TLS
+- test and capture TLS Traffic
+- install Easy-RSA
+- test and capture mTLS without a Client Certificate
+- test and capture mTLS with a Client Certificate
+- revoke a client certificate with Easy-RSA
+- test and capture connection attempt using a revoked certificate
+- issue a new client certificate
+- test and capture with the new client certificate
+- upload pcap files to artifacts
+- cleanup
 
-## Contributing:
-Please feel free to suggest improvements by submitting a pull request!
+---
+
+## How to Review GitHub Actions Results
+
+### 1. Viewing Workflow Runs
+- Go to the **Actions** tab in this repository.
+- Select a workflow run (triggered by a `push` or `pull_request`).
+- Expand individual steps to view detailed logs.
+
+### 2. Downloading Artifacts
+- At the bottom of the workflow run page, locate the **Artifacts** section.
+- Click on the artifact (e.g., `tls-testing-pcaps`) to download a `.zip` file containing:
+  - `.pcap` files for network traffic analysis.
+  - These can be opened in tools like Wireshark to validate TLS and mTLS handshakes, certificates, and protocols.
+
+---
+
+## Next Steps
+- review the uploaded .pcap files for validation of TLS and mTLS configurations
+- answer project questions
+- submit results
