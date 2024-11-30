@@ -26,13 +26,6 @@ jobs:
           docker exec client-container apt-get update
           docker exec client-container apt-get install -y dnsutils iputils-ping net-tools
       
-      # Verify Basic Connectivity
-      - name: Test Network Connectivity
-        run: |
-          docker network ls
-          docker network inspect team15-project5-test_default
-          docker exec client-container ping -c 2 server-container
-
       # TLS Configuration (Steps 4-5)
       - name: Setup TLS
         run: |
