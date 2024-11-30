@@ -1,34 +1,21 @@
-version: '3.8'
 services:
   server:
     build:
       context: .
       dockerfile: Dockerfile.server
     container_name: server-container
-    hostname: server
-    networks:
-      - pki-tls-net
     volumes:
-      - shared-cert-volume:/shared
-    ports:
-      - "443:443"  # Expose HTTPS to the host
+      - shared:/shared
 
   client:
     build:
       context: .
       dockerfile: Dockerfile.client
     container_name: client-container
-    hostname: client
-    networks:
-      - pki-tls-net
     volumes:
-      - shared-cert-volume:/shared
-    stdin_open: true
-    tty: true
+      - shared:/shared
+    depends_on:
+      - server
 
 volumes:
-  shared-cert-volume:
-
-networks:
-  pki-tls-net:
-    driver: bridge
+  shared:

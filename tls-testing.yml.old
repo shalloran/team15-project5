@@ -1,0 +1,59 @@
+name: TLS Testing
+on: [push, pull_request]
+
+jobs:
+ test:
+   runs-on: ubuntu-latest
+   steps:
+     - uses: actions/checkout@v3
+     
+     - name: Install Docker Compose
+       run: sudo apt-get install -y docker-compose
+     
+     - name: Build and Start Containers
+       run: |
+         docker compose build --no-cache
+         docker compose up -d
+     
+     - name: Install DNS Tools
+       run: |
+         docker exec client-container apt-get update
+         docker exec client-container apt-get install -y dnsutils iputils-ping net-tools
+         
+      - name: Basic Container Test
+        run: |
+          docker compose up -d
+          docker ps
+          docker network ls
+          docker inspect server-container | grep IPAddress
+          docker inspect client-container | grep IPAddress
+     
+     - name: Debug Network
+       run: |
+         docker network ls
+         docker network inspect team15-project5-test_app_network
+         docker exec client-container cat /etc/hosts
+         docker inspect server-container | grep IPAddress
+         docker exec client-container ping -c 2 172.20.0.2
+     
+     - name: Test TLS Setup
+       run: |
+         docker exec client-container curl --cert /shared/client.crt \
+           --key /shared/client.key -k https://172.20.0.2
+     
+     - name: Capture Traffic
+       run: |
+         mkdir -p artifacts/pcap
+         docker exec client-container tcpdump -i any -w /shared/test.pcap &
+         sleep 2
+         docker exec client-container curl --cert /shared/client.crt \
+           --key /shared/client.key -k https://172.20.0.2
+         sleep 2
+         pkill tcpdump
+         docker cp client-container:/shared/test.pcap artifacts/pcap/
+     
+     - name: Upload Artifacts
+       uses: actions/upload-artifact@v3
+       with:
+         name: test-results
+         path: artifacts/

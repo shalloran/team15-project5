@@ -1,10 +1,11 @@
+# syntax=docker/dockerfile:1.4
 FROM ubuntu:latest
 
-# Install necessary tools
-RUN apt update && apt install -y curl tcpdump
+RUN apt update && apt install -y curl tcpdump openssl
 
-# Create necessary directories for certificates
-RUN mkdir -p /etc/ssl/certs /etc/ssl/private /shared
+RUN mkdir /shared
+VOLUME ["/shared"]
+CMD tail -f /dev/null
 
-# Copy certificates into appropriate directories (shared volume will mount these)
-CMD ["bash"]
+# COPY --from=server-container /shared/client.crt /shared/
+# COPY --from=server-container /shared/client.key /shared/

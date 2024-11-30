@@ -1,0 +1,170 @@
+name: TLS Testing
+on: [push, pull_request]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Create Artifacts Directory
+        run: |
+          mkdir -p artifacts/pcap
+          chmod -R 777 artifacts/pcap
+      
+      # Setup (Steps 1-3)
+      - name: Install Docker Compose
+        run: sudo apt-get install -y docker-compose
+      
+      - name: Build and Start Containers
+        run: |
+          docker compose build --no-cache
+          docker compose up -d
+      
+      - name: Install Required Tools
+        run: |
+          docker exec client-container apt-get update
+          docker exec client-container apt-get install -y dnsutils iputils-ping net-tools
+      
+      # Verify Basic Connectivity
+      - name: Test Network Connectivity
+        run: |
+          docker network ls
+          docker network inspect team15-project5-test_default
+          docker exec client-container ping -c 2 server-container
+
+      # TLS Configuration (Steps 4-5)
+      - name: Setup TLS
+        run: |
+          docker exec server-container bash -c '
+          mkdir -p /etc/nginx/certs
+          cat > /etc/nginx/conf.d/ssl.conf << EOF
+          ssl_protocols TLSv1.3;
+          ssl_certificate /etc/nginx/certs/server.crt;
+          ssl_certificate_key /etc/nginx/certs/server.key;
+          EOF'
+
+      - name: Capture TLS Traffic
+        run: |
+          mkdir -p artifacts/pcap
+          docker exec client-container tcpdump -i any -w /shared/tls_handshake.pcap &
+          sleep 2
+          docker exec client-container curl -v -k https://server-container
+          sleep 2
+          docker exec client-container pidof tcpdump | xargs docker exec client-container kill
+          docker exec client-container pidof tcpdump || echo "tcpdump not running"
+          docker exec client-container ls -l /shared/
+          docker cp client-container:/shared/tls_handshake.pcap artifacts/pcap/
+          ls -l artifacts/pcap
+
+      # mTLS Configuration (Steps 6-7)
+      - name: Install and Setup Easy-RSA
+        run: |
+          docker exec server-container apt-get install -y easy-rsa
+          docker exec server-container bash -c '
+          mkdir -p /etc/nginx/easy-rsa
+          cp -r /usr/share/easy-rsa/* /etc/nginx/easy-rsa/
+          cd /etc/nginx/easy-rsa
+          ./easyrsa init-pki
+          cat > vars << EOF
+          set_var EASYRSA_ALGO ec
+          set_var EASYRSA_DIGEST sha512
+          set_var EASYRSA_CURVE secp384r1
+          EOF
+          printf "MyCA\n" | ./easyrsa build-ca nopass
+          printf "server-container\n" | ./easyrsa gen-req server-container nopass
+          echo "yes" | ./easyrsa sign-req server server-container
+          printf "client-container\n" | ./easyrsa gen-req client-container nopass
+          echo "yes" | ./easyrsa sign-req client client-container
+          mkdir -p /etc/nginx/ca /etc/nginx/certs
+          cp pki/ca.crt /etc/nginx/ca/
+          cp pki/issued/server-container.crt /etc/nginx/certs/server.crt
+          cp pki/private/server-container.key /etc/nginx/certs/server.key
+          cp pki/issued/client-container.crt /shared/client.crt
+          cp pki/private/client-container.key /shared/client.key'
+
+      - name: Test mTLS Without Client Cert
+        run: |
+          docker exec client-container tcpdump -i any -w /shared/mtls_fail.pcap &
+          sleep 2
+          docker exec client-container curl -v https://server-container || true
+          sleep 2
+          docker exec client-container pidof tcpdump | xargs docker exec client-container kill
+          docker exec client-container killall tcpdump || true
+          docker cp client-container:/shared/mtls_fail.pcap artifacts/pcap/
+
+      - name: Test mTLS With Client Cert
+        run: |
+          docker exec client-container tcpdump -i any -w /shared/mtls_success.pcap &
+          sleep 2
+          docker exec client-container curl -v --cert /shared/client.crt \
+            --key /shared/client.key --cacert /shared/ca.crt -k https://server-container
+          sleep 2
+          docker exec client-container pidof tcpdump | xargs docker exec client-container kill
+          docker exec client-container killall tcpdump || true
+          docker cp client-container:/shared/mtls_success.pcap artifacts/pcap/
+
+      # Certificate Revocation (Step 8)
+      - name: Revoke Client Certificate
+        run: |
+          docker exec server-container bash -c '
+          cd /etc/nginx/easy-rsa
+          echo "yes" | ./easyrsa revoke client-container
+          ./easyrsa gen-crl
+          cp pki/crl.pem /etc/nginx/certs/
+          cat > /etc/nginx/conf.d/ssl.conf << EOF
+          ssl_protocols TLSv1.3;
+          ssl_certificate /etc/nginx/certs/server.crt;
+          ssl_certificate_key /etc/nginx/certs/server.key;
+          ssl_client_certificate /etc/nginx/ca/ca.crt;
+          ssl_crl /etc/nginx/certs/crl.pem;
+          ssl_verify_client on;
+          ssl_verify_depth 1;
+          EOF'
+          docker exec server-container nginx -s reload
+
+      - name: Test With Revoked Certificate
+        run: |
+          docker exec client-container tcpdump -i any -w /shared/mtls_revoked.pcap &
+          sleep 2
+          docker exec client-container curl -v --cert /shared/client.crt \
+            --key /shared/client.key --cacert /shared/ca.crt -k https://server-container || true
+          sleep 2
+          docker exec client-container pidof tcpdump | xargs docker exec client-container kill
+          docker exec client-container killall tcpdump || true
+          docker cp client-container:/shared/mtls_revoked.pcap artifacts/pcap/
+
+      - name: Issue New Client Certificate
+        run: |
+          docker exec server-container bash -c '
+          cd /etc/nginx/easy-rsa
+          printf "client-container-new\n" | ./easyrsa gen-req client-container-new nopass
+          echo "yes" | ./easyrsa sign-req client client-container-new
+          cp pki/issued/client-container-new.crt /shared/client.crt
+          cp pki/private/client-container-new.key /shared/client.key'
+
+      - name: Test With New Certificate
+        run: |
+          docker exec client-container tcpdump -i any -w /shared/mtls_new_cert.pcap &
+          sleep 2
+          docker exec client-container curl -v --cert /shared/client.crt \
+            --key /shared/client.key --cacert /shared/ca.crt -k https://server-container
+          sleep 2
+          docker exec client-container pidof tcpdump | xargs docker exec client-container kill
+          docker exec client-container killall tcpdump || true
+          docker cp client-container:/shared/mtls_new_cert.pcap artifacts/pcap/
+
+      - name: Fix Permissions on Artifacts
+        run: chmod -R 777 artifacts/pcap
+
+      - name: Upload TLS Handshake Artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: tls-testing-pcaps
+          path: artifacts/pcap/
+          
+      - name: Cleanup
+        if: always()
+        run: |
+          docker compose down -v
+          docker system prune -f
