@@ -147,13 +147,12 @@ jobs:
         run: |
           docker exec client-container tcpdump -i any -w /shared/rsa_cipher_test.pcap &
           sleep 2
-          docker exec client-container curl -v --ciphers 'RSA' \
+          docker exec client-container curl -v --tlsv1.2 --ciphers 'AES256-SHA:AES128-SHA:DES-CBC3-SHA' \
             --cert /shared/client.crt \
             --key /shared/client.key \
             --cacert /shared/ca.crt -k https://server-container || true
           sleep 2
           docker exec client-container pidof tcpdump | xargs docker exec client-container kill
-          docker exec client-container killall tcpdump || true
           docker cp client-container:/shared/rsa_cipher_test.pcap artifacts/pcap/
 
       - name: Fix Permissions on Artifacts
