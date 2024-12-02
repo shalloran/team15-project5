@@ -160,13 +160,21 @@ jobs:
           docker cp client-container:/shared/rsa-ecc_cipher_test.pcap artifacts/pcap/
 
       - name: Fix Permissions on Artifacts
-        run: chmod -R 777 artifacts/pcap
+        run: |
+          chmod -R 777 artifacts/pcap
+          chmod -R 777 artifacts/logs
 
       - name: Upload TLS Handshake Artifact
         uses: actions/upload-artifact@v3
         with:
           name: tls-testing-pcaps
           path: artifacts/pcap/
+          
+      - name: Upload Curl Logs
+        uses: actions/upload-artifact@v3
+        with:
+          name: curl-logs
+          path: artifacts/logs/
           
       - name: Cleanup
         if: always()
