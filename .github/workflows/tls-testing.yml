@@ -82,9 +82,11 @@ jobs:
         run: |
           docker exec client-container tcpdump -i any -w /shared/mtls_fail.pcap &
           sleep 2
-          docker exec client-container curl -v https://server-container || true
+          docker exec client-container curl -v https://server-container \
+          --trace /shared/curl_debug_mtls_fail.log || true
           sleep 5
           docker exec client-container pidof tcpdump | xargs docker exec client-container kill
+          docker cp client-container:/shared/curl_debug_mtls_fail.log artifacts/logs/
           docker cp client-container:/shared/mtls_fail.pcap artifacts/pcap/
 
       - name: Test mTLS With Client Cert
@@ -121,7 +123,8 @@ jobs:
           docker exec client-container tcpdump -i any -w /shared/mtls_revoked.pcap &
           sleep 2
           docker exec client-container curl -v --cert /shared/client.crt \
-            --key /shared/client.key --cacert /shared/ca.crt -k https://server-container || true
+            --key /shared/client.key 
+            --cacert /shared/ca.crt -k https://server-container || true
           sleep 5
           docker exec client-container pidof tcpdump | xargs docker exec client-container kill
           docker cp client-container:/shared/mtls_revoked.pcap artifacts/pcap/
@@ -153,10 +156,10 @@ jobs:
             --cert /shared/client.crt \
             --key /shared/client.key \
             --cacert /shared/ca.crt -k https://server-container \
-            --trace /shared/curl_debug.log || true
+            --trace /shared/curl_debug_rsa-ecc.log || true
           sleep 5
           docker exec client-container pidof tcpdump | xargs docker exec client-container kill
-          docker cp client-container:/shared/curl_debug.log artifacts/logs/
+          docker cp client-container:/shared/curl_debug_rsa-ecc.log artifacts/logs/
           docker cp client-container:/shared/rsa-ecc_cipher_test.pcap artifacts/pcap/
 
       - name: Fix Permissions on Artifacts
