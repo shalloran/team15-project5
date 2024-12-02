@@ -158,7 +158,7 @@ jobs:
             --cacert /shared/ca.crt -k https://server-container \
             --trace /shared/curl_debug_rsa-ecc.log || true
           sleep 10
-          docker exec client-container pidof tcpdump | xargs docker exec client-container kill
+          docker exec client-container pidof tcpdump | xargs docker exec client-container kill -2
           docker exec client-container pidof tcpdump || echo "tcpdump not running"
           docker cp client-container:/shared/curl_debug_rsa-ecc.log artifacts/logs/
           docker cp client-container:/shared/rsa-ecc_cipher_test.pcap artifacts/pcap/
