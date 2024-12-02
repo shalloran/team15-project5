@@ -49,6 +49,7 @@ jobs:
           docker exec client-container pidof tcpdump | xargs docker exec client-container kill
           docker exec client-container pidof tcpdump || echo "tcpdump not running"
           docker exec client-container ls -l /shared/
+          sleep 2
           docker cp client-container:/shared/tls_handshake.pcap artifacts/pcap/
           ls -l artifacts/pcap
 
@@ -84,9 +85,10 @@ jobs:
           sleep 2
           docker exec client-container curl -v https://server-container \
           --trace /shared/curl_debug_mtls_fail.log || true
-          sleep 10
+          sleep 5
           docker exec client-container pidof tcpdump | xargs docker exec client-container kill
           docker exec client-container pidof tcpdump || echo "tcpdump not running"
+          sleep 2
           docker cp client-container:/shared/curl_debug_mtls_fail.log artifacts/logs/
           docker cp client-container:/shared/mtls_fail.pcap artifacts/pcap/
 
@@ -98,6 +100,7 @@ jobs:
             --key /shared/client.key --cacert /shared/ca.crt -k https://server-container
           sleep 5
           docker exec client-container pidof tcpdump | xargs docker exec client-container kill
+          sleep 2
           docker cp client-container:/shared/mtls_success.pcap artifacts/pcap/
 
       # Certificate Revocation (Step 8)
@@ -128,6 +131,7 @@ jobs:
             --cacert /shared/ca.crt -k https://server-container || true
           sleep 5
           docker exec client-container pidof tcpdump | xargs docker exec client-container kill
+          sleep 2
           docker cp client-container:/shared/mtls_revoked.pcap artifacts/pcap/
 
       - name: Issue New Client Certificate
@@ -147,6 +151,7 @@ jobs:
             --key /shared/client.key --cacert /shared/ca.crt -k https://server-container
           sleep 5
           docker exec client-container pidof tcpdump | xargs docker exec client-container kill
+          sleep 2
           docker cp client-container:/shared/mtls_new_cert.pcap artifacts/pcap/
           
       - name: Test RSA Cipher Suite
@@ -158,9 +163,10 @@ jobs:
             --key /shared/client.key \
             --cacert /shared/ca.crt -k https://server-container \
             --trace /shared/curl_debug_rsa-ecc.log || true
-          sleep 10
+          sleep 5
           docker exec client-container pidof tcpdump | xargs docker exec client-container kill
           docker exec client-container pidof tcpdump || echo "tcpdump not running"
+          sleep 2
           docker cp client-container:/shared/curl_debug_rsa-ecc.log artifacts/logs/
           docker cp client-container:/shared/rsa-ecc_cipher_test.pcap artifacts/pcap/
 
