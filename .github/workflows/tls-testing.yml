@@ -10,7 +10,9 @@ jobs:
       - name: Create Artifacts Directory
         run: |
           mkdir -p artifacts/pcap
+          mkdir -p artifacts/logs
           chmod -R 777 artifacts/pcap
+          chmod -R 777 artifacts/logs
       
       # Setup (Steps 1-3)
       - name: Install Docker Compose
