@@ -83,7 +83,6 @@ jobs:
           docker exec client-container curl -v https://server-container || true
           sleep 2
           docker exec client-container pidof tcpdump | xargs docker exec client-container kill
-          docker exec client-container killall tcpdump || true
           docker cp client-container:/shared/mtls_fail.pcap artifacts/pcap/
 
       - name: Test mTLS With Client Cert
@@ -94,7 +93,6 @@ jobs:
             --key /shared/client.key --cacert /shared/ca.crt -k https://server-container
           sleep 2
           docker exec client-container pidof tcpdump | xargs docker exec client-container kill
-          docker exec client-container killall tcpdump || true
           docker cp client-container:/shared/mtls_success.pcap artifacts/pcap/
 
       # Certificate Revocation (Step 8)
@@ -124,7 +122,6 @@ jobs:
             --key /shared/client.key --cacert /shared/ca.crt -k https://server-container || true
           sleep 2
           docker exec client-container pidof tcpdump | xargs docker exec client-container kill
-          docker exec client-container killall tcpdump || true
           docker cp client-container:/shared/mtls_revoked.pcap artifacts/pcap/
 
       - name: Issue New Client Certificate
@@ -144,7 +141,6 @@ jobs:
             --key /shared/client.key --cacert /shared/ca.crt -k https://server-container
           sleep 2
           docker exec client-container pidof tcpdump | xargs docker exec client-container kill
-          docker exec client-container killall tcpdump || true
           docker cp client-container:/shared/mtls_new_cert.pcap artifacts/pcap/
           
       - name: Test RSA Cipher Suite
@@ -158,7 +154,7 @@ jobs:
           sleep 2
           docker exec client-container pidof tcpdump | xargs docker exec client-container kill
           docker exec client-container killall tcpdump || true
-          docker cp client-container:/shared/rsa-ecc_cipher_test.pcap artifacts/pcap/
+          docker cp client-container:/shared/rsa_cipher_test.pcap artifacts/pcap/
 
       - name: Fix Permissions on Artifacts
         run: chmod -R 777 artifacts/pcap
