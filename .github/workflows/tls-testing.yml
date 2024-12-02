@@ -150,7 +150,7 @@ jobs:
           docker exec client-container curl -v --tlsv1.2 --tls-max 1.2 --ciphers 'AES256-SHA:AES128-SHA:DES-CBC3-SHA' \
             --cert /shared/client.crt \
             --key /shared/client.key \
-            --cacert /shared/ca.crt -k https://server-container
+            --cacert /shared/ca.crt -k https://server-container \
             --trace /shared/curl_debug.log || true
           sleep 5
           docker exec client-container pidof tcpdump | xargs docker exec client-container kill
