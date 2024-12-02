@@ -153,7 +153,7 @@ jobs:
             --cacert /shared/ca.crt -k https://server-container || true
           sleep 5
           docker exec client-container pidof tcpdump | xargs docker exec client-container kill
-          docker cp client-container:/shared/rsa_cipher_test.pcap artifacts/pcap/
+          docker cp client-container:/shared/rsa-ecc_cipher_test.pcap artifacts/pcap/
 
       - name: Fix Permissions on Artifacts
         run: chmod -R 777 artifacts/pcap
