@@ -10,7 +10,9 @@ jobs:
       - name: Create Artifacts Directory
         run: |
           mkdir -p artifacts/pcap
+          mkdir -p artifacts/logs
           chmod -R 777 artifacts/pcap
+          chmod -R 777 artifacts/logs
       
       # Setup (Steps 1-3)
       - name: Install Docker Compose
@@ -43,10 +45,11 @@ jobs:
           docker exec client-container tcpdump -i any -w /shared/tls_handshake.pcap &
           sleep 2
           docker exec client-container curl -v -k https://server-container
-          sleep 2
+          sleep 5
           docker exec client-container pidof tcpdump | xargs docker exec client-container kill
           docker exec client-container pidof tcpdump || echo "tcpdump not running"
           docker exec client-container ls -l /shared/
+          sleep 2
           docker cp client-container:/shared/tls_handshake.pcap artifacts/pcap/
           ls -l artifacts/pcap
 
@@ -80,10 +83,13 @@ jobs:
         run: |
           docker exec client-container tcpdump -i any -w /shared/mtls_fail.pcap &
           sleep 2
-          docker exec client-container curl -v https://server-container || true
-          sleep 2
+          docker exec client-container curl -v https://server-container \
+          --trace /shared/curl_debug_mtls_fail.log || true
+          sleep 5
           docker exec client-container pidof tcpdump | xargs docker exec client-container kill
-          docker exec client-container killall tcpdump || true
+          docker exec client-container pidof tcpdump || echo "tcpdump not running"
+          sleep 2
+          docker cp client-container:/shared/curl_debug_mtls_fail.log artifacts/logs/
           docker cp client-container:/shared/mtls_fail.pcap artifacts/pcap/
 
       - name: Test mTLS With Client Cert
@@ -92,9 +98,9 @@ jobs:
           sleep 2
           docker exec client-container curl -v --cert /shared/client.crt \
             --key /shared/client.key --cacert /shared/ca.crt -k https://server-container
-          sleep 2
+          sleep 5
           docker exec client-container pidof tcpdump | xargs docker exec client-container kill
-          docker exec client-container killall tcpdump || true
+          sleep 2
           docker cp client-container:/shared/mtls_success.pcap artifacts/pcap/
 
       # Certificate Revocation (Step 8)
@@ -121,10 +127,11 @@ jobs:
           docker exec client-container tcpdump -i any -w /shared/mtls_revoked.pcap &
           sleep 2
           docker exec client-container curl -v --cert /shared/client.crt \
-            --key /shared/client.key --cacert /shared/ca.crt -k https://server-container || true
-          sleep 2
+            --key /shared/client.key \
+            --cacert /shared/ca.crt -k https://server-container || true
+          sleep 5
           docker exec client-container pidof tcpdump | xargs docker exec client-container kill
-          docker exec client-container killall tcpdump || true
+          sleep 2
           docker cp client-container:/shared/mtls_revoked.pcap artifacts/pcap/
 
       - name: Issue New Client Certificate
@@ -142,19 +149,43 @@ jobs:
           sleep 2
           docker exec client-container curl -v --cert /shared/client.crt \
             --key /shared/client.key --cacert /shared/ca.crt -k https://server-container
-          sleep 2
+          sleep 5
           docker exec client-container pidof tcpdump | xargs docker exec client-container kill
-          docker exec client-container killall tcpdump || true
+          sleep 2
           docker cp client-container:/shared/mtls_new_cert.pcap artifacts/pcap/
+          
+      - name: Test RSA Cipher Suite
+        run: |
+          docker exec client-container tcpdump -i any -w /shared/rsa-ecc_cipher_test.pcap &
+          sleep 5
+          docker exec client-container curl -v --tlsv1.2 --tls-max 1.2 --ciphers 'AES256-SHA:AES128-SHA:DES-CBC3-SHA' \
+            --cert /shared/client.crt \
+            --key /shared/client.key \
+            --cacert /shared/ca.crt -k https://server-container \
+            --trace /shared/curl_debug_rsa-ecc.log || true
+          sleep 5
+          docker exec client-container pidof tcpdump | xargs docker exec client-container kill
+          docker exec client-container pidof tcpdump || echo "tcpdump not running"
+          sleep 2
+          docker cp client-container:/shared/curl_debug_rsa-ecc.log artifacts/logs/
+          docker cp client-container:/shared/rsa-ecc_cipher_test.pcap artifacts/pcap/
 
       - name: Fix Permissions on Artifacts
-        run: chmod -R 777 artifacts/pcap
+        run: |
+          chmod -R 777 artifacts/pcap
+          chmod -R 777 artifacts/logs
 
       - name: Upload TLS Handshake Artifact
         uses: actions/upload-artifact@v3
         with:
           name: tls-testing-pcaps
           path: artifacts/pcap/
+          
+      - name: Upload Curl Logs
+        uses: actions/upload-artifact@v3
+        with:
+          name: curl-logs
+          path: artifacts/logs/
           
       - name: Cleanup
         if: always()
