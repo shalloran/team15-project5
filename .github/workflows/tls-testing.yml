@@ -146,6 +146,19 @@ jobs:
           docker exec client-container pidof tcpdump | xargs docker exec client-container kill
           docker exec client-container killall tcpdump || true
           docker cp client-container:/shared/mtls_new_cert.pcap artifacts/pcap/
+          
+      - name: Test RSA Cipher Suite
+        run: |
+          docker exec client-container tcpdump -i any -w /shared/rsa_cipher_test.pcap &
+          sleep 2
+          docker exec client-container curl -v --ciphers 'RSA' \
+            --cert /shared/client.crt \
+            --key /shared/client.key \
+            --cacert /shared/ca.crt -k https://server-container || true
+          sleep 2
+          docker exec client-container pidof tcpdump | xargs docker exec client-container kill
+          docker exec client-container killall tcpdump || true
+          docker cp client-container:/shared/rsa-ecc_cipher_test.pcap artifacts/pcap/
 
       - name: Fix Permissions on Artifacts
         run: chmod -R 777 artifacts/pcap
