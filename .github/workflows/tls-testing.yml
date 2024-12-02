@@ -147,7 +147,7 @@ jobs:
         run: |
           docker exec client-container tcpdump -i any -w /shared/rsa_cipher_test.pcap &
           sleep 2
-          docker exec client-container curl -v --tlsv1.2 --ciphers 'AES256-SHA:AES128-SHA:DES-CBC3-SHA' \
+          docker exec client-container curl -v --tlsv1.2 --tls-max 1.2 --ciphers 'AES256-SHA:AES128-SHA:DES-CBC3-SHA' \
             --cert /shared/client.crt \
             --key /shared/client.key \
             --cacert /shared/ca.crt -k https://server-container || true
