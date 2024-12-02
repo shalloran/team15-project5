@@ -145,7 +145,7 @@ jobs:
           
       - name: Test RSA Cipher Suite
         run: |
-          docker exec client-container tcpdump -i any -w /shared/rsa_cipher_test.pcap &
+          docker exec client-container tcpdump -i any -w /shared/rsa-ecc_cipher_test.pcap &
           sleep 2
           docker exec client-container curl -v --tlsv1.2 --tls-max 1.2 --ciphers 'AES256-SHA:AES128-SHA:DES-CBC3-SHA' \
             --cert /shared/client.crt \
